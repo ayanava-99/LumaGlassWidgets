@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="luma_bg_dark">#090C14</color>
+    <color name="luma_surface_dark">#141926</color>
+    <color name="luma_accent_cyan">#7DD3FC</color>
+    <color name="luma_accent_lavender">#C4B5FD</color>
+    <color name="luma_text_light">#F8FAFC</color>
+    <color name="luma_text_dark">#0F172A</color>
+    <color name="luma_icon_bg">#0F172A</color>
+</resources>

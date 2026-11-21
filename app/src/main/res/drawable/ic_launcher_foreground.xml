@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Back glass card -->
+    <path
+        android:fillAlpha="0.28"
+        android:fillColor="#FFFFFF"
+        android:pathData="M34,26L74,26A10,10 0,0 1,84 36L84,66A10,10 0,0 1,74 76L34,76A10,10 0,0 1,24 66L24,36A10,10 0,0 1,34 26z"
+        android:strokeWidth="1.5"
+        android:strokeColor="#80FFFFFF" />
+    <!-- Front frosted glass prism -->
+    <path
+        android:fillAlpha="0.65"
+        android:fillColor="#E0F2FE"
+        android:pathData="M42,36L76,36A9,9 0,0 1,85 45L85,73A9,9 0,0 1,76 82L42,82A9,9 0,0 1,33 73L33,45A9,9 0,0 1,42 36z"
+        android:strokeWidth="1.8"
+        android:strokeColor="#FFFFFF" />
+    <!-- Minimalist time dots -->
+    <path
+        android:fillColor="#0F172A"
+        android:pathData="M47,55a4,4 0,1 0,8 0a4,4 0,1 0,-8 0z" />
+    <path
+        android:fillColor="#0F172A"
+        android:pathData="M62,55a4,4 0,1 0,8 0a4,4 0,1 0,-8 0z" />
+    <path
+        android:fillColor="#0284C7"
+        android:pathData="M46,66L72,66A2,2 0,0 1,74 68L74,68A2,2 0,0 1,72 70L46,70A2,2 0,0 1,44 68L44,68A2,2 0,0 1,46 66z" />
+</vector>

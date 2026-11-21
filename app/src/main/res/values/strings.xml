@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">LumaGlass Widgets</string>
+    <string name="widget_label_clock">LumaGlass • Clock &amp; Date</string>
+    <string name="widget_label_battery">LumaGlass • Battery &amp; Device</string>
+    <string name="widget_label_productivity">LumaGlass • Focus &amp; Goals</string>
+    <string name="widget_label_photo">LumaGlass • Photo &amp; Quotes</string>
+    <string name="widget_desc_clock">Frosted glass digital, flip, analog ring, and day-progress clocks.</string>
+    <string name="widget_desc_battery">Liquid glass battery ring, storage/RAM pill, and Wi-Fi status card.</string>
+    <string name="widget_desc_productivity">Exam/event countdowns, habit streak counter, sticky notes, and year dot grid.</string>
+    <string name="widget_desc_photo">Polaroid glass photo frames, photo carousel, minimalist quotes, and app dock.</string>
+</resources>

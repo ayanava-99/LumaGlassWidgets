@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_glass_smoked_dark"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="“Clarity comes from simplicity.”"
+        android:gravity="center"
+        android:textColor="@color/luma_text_light"
+        android:textSize="14sp"
+        android:textStyle="italic" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="POLAROID • QUOTES • DOCK"
+        android:textColor="#99F8FAFC"
+        android:textSize="10sp"
+        android:textStyle="bold" />
+</LinearLayout>
