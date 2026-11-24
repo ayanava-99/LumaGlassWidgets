@@ -40,3 +40,11 @@ class ProductivityWidgetReceiver : BaseLumaWidgetReceiver() {
 class PhotoWidgetReceiver : BaseLumaWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = PhotoGlanceWidget()
 }
+
+class MinimalWidgetReceiver : BaseLumaWidgetReceiver() {
+    override val glanceAppWidget: GlanceAppWidget = MinimalGlanceWidget()
+}
+
+class AbstractWidgetReceiver : BaseLumaWidgetReceiver() {
+    override val glanceAppWidget: GlanceAppWidget = AbstractGlanceWidget()
+}

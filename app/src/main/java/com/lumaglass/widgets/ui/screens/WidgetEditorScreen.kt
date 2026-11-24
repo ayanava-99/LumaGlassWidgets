@@ -2,12 +2,11 @@ package com.lumaglass.widgets.ui.screens
 
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
-import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -37,6 +36,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -72,8 +72,11 @@ import com.lumaglass.widgets.data.ThemeMode
 import com.lumaglass.widgets.data.WidgetCategory
 import com.lumaglass.widgets.data.WidgetConfig
 import com.lumaglass.widgets.data.WidgetTemplateId
+import com.lumaglass.widgets.data.WorldClockCities
+import com.lumaglass.widgets.glance.AbstractWidgetReceiver
 import com.lumaglass.widgets.glance.BatteryWidgetReceiver
 import com.lumaglass.widgets.glance.ClockWidgetReceiver
+import com.lumaglass.widgets.glance.MinimalWidgetReceiver
 import com.lumaglass.widgets.glance.PhotoWidgetReceiver
 import com.lumaglass.widgets.glance.ProductivityWidgetReceiver
 import com.lumaglass.widgets.ui.components.GlassWidgetPreviewCard
@@ -151,14 +154,15 @@ fun WidgetEditorScreen(
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = {
                     Column {
-                        Text(config.templateId.title, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+                        Text(config.templateId.title, style = MaterialTheme.typography.titleMedium)
                         Text(
                             config.templateId.category.title,
-                            fontSize = 12.sp,
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -174,15 +178,12 @@ fun WidgetEditorScreen(
             )
         },
         bottomBar = {
-            Surface(
-                color = MaterialTheme.colorScheme.surface,
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
-            ) {
-                Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)) {
+            Surface(color = MaterialTheme.colorScheme.surfaceContainerLow) {
+                Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp)) {
                     pinFeedbackMessage?.let { msg ->
                         Text(
                             text = msg,
-                            fontSize = 12.sp,
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
@@ -196,6 +197,8 @@ fun WidgetEditorScreen(
                                 } else {
                                     val appWidgetManager = AppWidgetManager.getInstance(context)
                                     val receiverClass = when (config.templateId.category) {
+                                        WidgetCategory.MINIMAL -> MinimalWidgetReceiver::class.java
+                                        WidgetCategory.ABSTRACT -> AbstractWidgetReceiver::class.java
                                         WidgetCategory.CLOCKS, WidgetCategory.ALL -> ClockWidgetReceiver::class.java
                                         WidgetCategory.BATTERY -> BatteryWidgetReceiver::class.java
                                         WidgetCategory.PRODUCTIVITY -> ProductivityWidgetReceiver::class.java
@@ -210,7 +213,7 @@ fun WidgetEditorScreen(
                                         false
                                     }
                                     if (requested) {
-                                        pinFeedbackMessage = "Saved! Confirm the system prompt to pin on your home screen."
+                                        pinFeedbackMessage = "Saved. Confirm the system prompt to place on your home screen."
                                         onAfterPinOrSave()
                                     } else {
                                         showManualPinDialog = true
@@ -221,18 +224,18 @@ fun WidgetEditorScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(52.dp),
-                        shape = RoundedCornerShape(16.dp)
+                        shape = CircleShape
                     ) {
                         Icon(
                             imageVector = if (isLauncherConfigureFlow) Icons.Rounded.Check else Icons.Rounded.AddHome,
                             contentDescription = null,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
                             text = if (isLauncherConfigureFlow) "Save & Apply Widget" else "Add to Home Screen",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
                 }
@@ -244,20 +247,21 @@ fun WidgetEditorScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp)
+                .padding(horizontal = 20.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Live Preview Canvas with Responsive Size Switcher
+            // Live Preview Stage
             Surface(
-                shape = RoundedCornerShape(24.dp),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
+                shape = RoundedCornerShape(26.dp),
+                color = MaterialTheme.colorScheme.surfaceContainer
             ) {
-                Column {
+                Column(modifier = Modifier.padding(10.dp)) {
                     WallpaperPreviewCanvas(
                         backdrop = selectedWallpaper,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(270.dp)
+                            .height(248.dp)
+                            .clip(RoundedCornerShape(18.dp))
                             .padding(16.dp)
                     ) {
                         GlassWidgetPreviewCard(
@@ -272,14 +276,13 @@ fun WidgetEditorScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(MaterialTheme.colorScheme.surface)
-                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                            .padding(horizontal = 8.dp, vertical = 6.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Responsive Preview",
-                            fontSize = 12.sp,
+                            text = "Preview size",
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -287,7 +290,8 @@ fun WidgetEditorScreen(
                                 FilterChip(
                                     selected = previewSize == option,
                                     onClick = { previewSize = option },
-                                    label = { Text(option.label, fontSize = 11.sp) }
+                                    label = { Text(option.label, fontSize = 11.sp) },
+                                    shape = CircleShape
                                 )
                             }
                         }
@@ -295,109 +299,120 @@ fun WidgetEditorScreen(
                 }
             }
 
-            // Transparency Slider (0% - 100%)
-            EditorSectionCard(title = "Glass Transparency (${(config.opacity * 100).roundToInt()}%)") {
+            // Glass Appearance Controls
+            EditorSectionCard(title = "Glass Appearance") {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Transparency", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("${(config.opacity * 100).roundToInt()}%", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                }
                 Slider(
                     value = config.opacity,
                     onValueChange = { config = config.copy(opacity = it) },
                     valueRange = 0f..1f
                 )
-            }
 
-            // Corner Radius Slider
-            EditorSectionCard(title = "Corner Radius (${config.cornerRadiusDp}dp)") {
+                Spacer(Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Corner radius", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("${config.cornerRadiusDp}dp", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                }
                 Slider(
                     value = config.cornerRadiusDp.toFloat(),
                     onValueChange = { config = config.copy(cornerRadiusDp = it.roundToInt()) },
                     valueRange = 8f..36f
                 )
-            }
 
-            // Tint Color Presets + Pro Custom Hex Color
-            EditorSectionCard(title = "Glass Tint Preset") {
+                Spacer(Modifier.height(10.dp))
+                Text("Tint", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(10.dp))
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     GlassTintPreset.entries.forEach { preset ->
                         val selected = config.tintPreset == preset && config.customHexColor == null
-                        Surface(
-                            shape = RoundedCornerShape(14.dp),
-                            color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-                            border = BorderStroke(
-                                1.dp,
-                                if (selected) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.12f)
-                            ),
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier.clickable {
                                 config = config.copy(tintPreset = preset, customHexColor = null)
                                 customHexInput = ""
                             }
                         ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(16.dp)
-                                        .clip(CircleShape)
-                                        .background(Color(preset.baseColorHex))
-                                )
-                                Spacer(Modifier.width(7.dp))
-                                Text(preset.label, fontSize = 12.sp)
-                            }
+                            Box(
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .clip(CircleShape)
+                                    .then(
+                                        if (selected) {
+                                            Modifier.border(2.5.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                                        } else {
+                                            Modifier.border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape)
+                                        }
+                                    )
+                                    .padding(if (selected) 3.dp else 0.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(preset.baseColorHex))
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = preset.label,
+                                fontSize = 11.sp,
+                                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
 
-                Spacer(Modifier.height(12.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    OutlinedTextField(
-                        value = customHexInput,
-                        onValueChange = { input ->
-                            if (!isProUnlocked) {
-                                onOpenProUpgrade()
-                            } else {
-                                customHexInput = input
-                                val parsed = BitmapHelper.parseHexOrNull(input)
-                                if (parsed != null) {
-                                    config = config.copy(customHexColor = input.trim())
-                                } else if (input.isBlank()) {
-                                    config = config.copy(customHexColor = null)
-                                }
+                Spacer(Modifier.height(14.dp))
+                OutlinedTextField(
+                    value = customHexInput,
+                    onValueChange = { input ->
+                        if (!isProUnlocked) {
+                            onOpenProUpgrade()
+                        } else {
+                            customHexInput = input
+                            val parsed = BitmapHelper.parseHexOrNull(input)
+                            if (parsed != null) {
+                                config = config.copy(customHexColor = input.trim())
+                            } else if (input.isBlank()) {
+                                config = config.copy(customHexColor = null)
                             }
-                        },
-                        label = {
-                            Text(if (isProUnlocked) "Custom Hex (#AARRGGBB)" else "Custom Hex (Pro ₹49)")
-                        },
-                        placeholder = { Text("#B4F0FD") },
-                        singleLine = true,
-                        trailingIcon = if (!isProUnlocked) {
-                            { Icon(Icons.Rounded.Lock, contentDescription = "Pro feature", modifier = Modifier.size(18.dp)) }
-                        } else null,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
+                        }
+                    },
+                    label = {
+                        Text(if (isProUnlocked) "Custom Hex (#AARRGGBB)" else "Custom Hex (Pro)")
+                    },
+                    placeholder = { Text("#B4F0FD") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(14.dp),
+                    trailingIcon = if (!isProUnlocked) {
+                        { Icon(Icons.Rounded.Lock, contentDescription = "Pro feature", modifier = Modifier.size(16.dp)) }
+                    } else null,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
 
-            // Theme Mode & Font Style
-            EditorSectionCard(title = "Mode & Typography") {
+            // Tone & Typography
+            EditorSectionCard(title = "Tone & Typography") {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     ThemeMode.entries.forEach { mode ->
                         FilterChip(
                             selected = config.themeMode == mode,
                             onClick = { config = config.copy(themeMode = mode) },
-                            label = { Text(mode.label) }
+                            label = { Text(mode.label) },
+                            shape = CircleShape
                         )
                     }
                 }
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(6.dp))
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -415,10 +430,11 @@ fun WidgetEditorScreen(
                                     config = config.copy(fontStyle = font)
                                 }
                             },
+                            shape = CircleShape,
                             label = {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     if (isProFont && !isProUnlocked) {
-                                        Icon(Icons.Rounded.Lock, null, modifier = Modifier.size(13.dp))
+                                        Icon(Icons.Rounded.Lock, null, modifier = Modifier.size(12.dp))
                                         Spacer(Modifier.width(4.dp))
                                     }
                                     Text(font.label)
@@ -429,10 +445,103 @@ fun WidgetEditorScreen(
                 }
             }
 
-            // Widget-Specific Content Editor
+            // Template-specific Content Controls
             when (config.templateId) {
+                WidgetTemplateId.MINIMAL_GREETING_CARD -> {
+                    EditorSectionCard(title = "Greeting") {
+                        OutlinedTextField(
+                            value = config.greetingName,
+                            onValueChange = { config = config.copy(greetingName = it) },
+                            label = { Text("Your Name") },
+                            singleLine = true,
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+
+                WidgetTemplateId.MINIMAL_FOCUS_TIMER -> {
+                    EditorSectionCard(title = "Focus Sprint") {
+                        Text("Sprint Duration", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.height(6.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf(15, 25, 45, 60).forEach { mins ->
+                                FilterChip(
+                                    selected = config.focusMinutes == mins,
+                                    onClick = { config = config.copy(focusMinutes = mins) },
+                                    label = { Text("${mins}m") },
+                                    shape = CircleShape
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text("Sessions: ${config.focusSessionsCount}", modifier = Modifier.weight(1f))
+                            OutlinedButton(onClick = { config = config.copy(focusSessionsCount = 0) }) { Text("Reset") }
+                            FilledTonalButton(onClick = { config = config.copy(focusSessionsCount = config.focusSessionsCount + 1) }) { Text("+1") }
+                        }
+                    }
+                }
+
+                WidgetTemplateId.MINIMAL_WORLD_CLOCK -> {
+                    EditorSectionCard(title = "Second City") {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            WorldClockCities.presets.forEach { (city, zoneId) ->
+                                FilterChip(
+                                    selected = config.worldClockZoneId == zoneId,
+                                    onClick = { config = config.copy(worldClockZoneId = zoneId) },
+                                    label = { Text(city) },
+                                    shape = CircleShape
+                                )
+                            }
+                        }
+                    }
+                }
+
+                WidgetTemplateId.ABSTRACT_BREATHING_WAVE -> {
+                    EditorSectionCard(title = "Horizon Caption") {
+                        OutlinedTextField(
+                            value = config.customTitle,
+                            onValueChange = { config = config.copy(customTitle = it) },
+                            label = { Text("Calm Mantra or Tagline") },
+                            placeholder = { Text("Breathe • Stay Present") },
+                            singleLine = true,
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+
+                WidgetTemplateId.DAILY_WATER_TRACKER -> {
+                    EditorSectionCard(title = "Hydration Goal") {
+                        Text("Daily Target (glasses)", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.height(6.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf(6, 8, 10, 12).forEach { goal ->
+                                FilterChip(
+                                    selected = config.waterDailyGoal == goal,
+                                    onClick = { config = config.copy(waterDailyGoal = goal) },
+                                    label = { Text("$goal") },
+                                    shape = CircleShape
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text("Today: ${config.waterGlassesCount} / ${config.waterDailyGoal}", modifier = Modifier.weight(1f))
+                            OutlinedButton(onClick = { config = config.copy(waterGlassesCount = (config.waterGlassesCount - 1).coerceAtLeast(0)) }) { Text("-1") }
+                            FilledTonalButton(onClick = { config = config.copy(waterGlassesCount = config.waterGlassesCount + 1) }) { Text("+1") }
+                        }
+                    }
+                }
+
                 WidgetTemplateId.EXAM_COUNTDOWN -> {
-                    EditorSectionCard(title = "Countdown Details") {
+                    EditorSectionCard(title = "Countdown") {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -443,7 +552,8 @@ fun WidgetEditorScreen(
                                 FilterChip(
                                     selected = config.customTitle == preset,
                                     onClick = { config = config.copy(customTitle = preset) },
-                                    label = { Text(preset) }
+                                    label = { Text(preset) },
+                                    shape = CircleShape
                                 )
                             }
                         }
@@ -451,8 +561,9 @@ fun WidgetEditorScreen(
                         OutlinedTextField(
                             value = config.customTitle,
                             onValueChange = { config = config.copy(customTitle = it) },
-                            label = { Text("Exam or Event Title") },
+                            label = { Text("Event Title") },
                             singleLine = true,
+                            shape = RoundedCornerShape(14.dp),
                             modifier = Modifier.fillMaxWidth()
                         )
                         Spacer(Modifier.height(10.dp))
@@ -460,7 +571,8 @@ fun WidgetEditorScreen(
                             .format(DateTimeFormatter.ofPattern("dd MMM yyyy"))
                         OutlinedButton(
                             onClick = { showDatePicker = true },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp)
                         ) {
                             Icon(Icons.Rounded.CalendarMonth, null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
@@ -469,27 +581,29 @@ fun WidgetEditorScreen(
                     }
                 }
 
-                WidgetTemplateId.HABIT_STREAK -> {
-                    EditorSectionCard(title = "Habit Tracker Details") {
+                WidgetTemplateId.HABIT_STREAK,
+                WidgetTemplateId.WEEKLY_STREAK_GRID -> {
+                    EditorSectionCard(title = "Habit") {
                         OutlinedTextField(
                             value = config.habitName,
                             onValueChange = { config = config.copy(habitName = it) },
                             label = { Text("Habit Name") },
                             singleLine = true,
+                            shape = RoundedCornerShape(14.dp),
                             modifier = Modifier.fillMaxWidth()
                         )
                         Spacer(Modifier.height(10.dp))
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Text("Current Streak: ${config.habitStreakCount} days", modifier = Modifier.weight(1f))
+                            Text("Streak: ${config.habitStreakCount} days", modifier = Modifier.weight(1f))
                             OutlinedButton(
                                 onClick = {
                                     config = config.copy(habitStreakCount = (config.habitStreakCount - 1).coerceAtLeast(0))
                                 }
                             ) { Text("-1") }
-                            Button(
+                            FilledTonalButton(
                                 onClick = {
                                     config = config.copy(habitStreakCount = config.habitStreakCount + 1)
                                 }
@@ -501,7 +615,7 @@ fun WidgetEditorScreen(
                 WidgetTemplateId.STICKY_NOTE,
                 WidgetTemplateId.MINIMAL_QUOTE -> {
                     EditorSectionCard(
-                        title = if (config.templateId == WidgetTemplateId.STICKY_NOTE) "Sticky Note Text" else "Custom Quote (optional)"
+                        title = if (config.templateId == WidgetTemplateId.STICKY_NOTE) "Note Content" else "Custom Quote"
                     ) {
                         OutlinedTextField(
                             value = config.customNoteOrQuote,
@@ -509,6 +623,7 @@ fun WidgetEditorScreen(
                             label = { Text("Note or Quote") },
                             minLines = 3,
                             maxLines = 5,
+                            shape = RoundedCornerShape(14.dp),
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -516,31 +631,33 @@ fun WidgetEditorScreen(
 
                 WidgetTemplateId.POLAROID_PHOTO,
                 WidgetTemplateId.GLASS_PHOTO_CAROUSEL -> {
-                    EditorSectionCard(title = "Photo Selection (OOM-Safe Downscaled)") {
+                    EditorSectionCard(title = "Photo") {
                         if (config.templateId == WidgetTemplateId.POLAROID_PHOTO) {
                             OutlinedTextField(
                                 value = config.customTitle,
                                 onValueChange = { config = config.copy(customTitle = it) },
-                                label = { Text("Polaroid Caption") },
+                                label = { Text("Caption") },
                                 singleLine = true,
+                                shape = RoundedCornerShape(14.dp),
                                 modifier = Modifier.fillMaxWidth()
                             )
                             Spacer(Modifier.height(10.dp))
                         } else {
                             Text(
-                                text = "${config.photoCarouselUris.size} photo(s) added to carousel (max 6)",
-                                fontSize = 12.sp,
+                                text = "${config.photoCarouselUris.size} photo(s) in carousel (max 6)",
+                                style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(Modifier.height(8.dp))
                         }
-                        Button(
+                        FilledTonalButton(
                             onClick = {
                                 photoPickerLauncher.launch(
                                     PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                                 )
                             },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp)
                         ) {
                             Icon(Icons.Rounded.PhotoLibrary, null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
@@ -548,22 +665,14 @@ fun WidgetEditorScreen(
                                 if (config.templateId == WidgetTemplateId.GLASS_PHOTO_CAROUSEL) {
                                     "Add Photo to Carousel"
                                 } else {
-                                    "Pick Photo from Gallery"
+                                    "Choose Photo"
                                 }
                             )
                         }
                     }
                 }
 
-                else -> {
-                    EditorSectionCard(title = "Widget Info") {
-                        Text(
-                            text = "This widget reads live system state automatically with zero background polling to preserve battery.",
-                            fontSize = 13.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
+                else -> Unit
             }
 
             Spacer(Modifier.height(12.dp))
@@ -602,14 +711,14 @@ fun WidgetEditorScreen(
     if (showManualPinDialog) {
         AlertDialog(
             onDismissRequest = { showManualPinDialog = false },
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             title = { Text("Add Widget Manually") },
             text = {
                 Text(
-                    "Your customization is saved! Some launchers disable automatic widget pinning.\n\n" +
-                        "To add it manually:\n" +
+                    "Your style is saved. If your launcher doesn't support direct pinning:\n\n" +
                         "1. Long-press an empty space on your Home Screen.\n" +
                         "2. Tap Widgets → LumaGlass Widgets.\n" +
-                        "3. Drag \"${config.templateId.category.title}\" onto your screen—it will load your saved style automatically."
+                        "3. Drag \"LumaGlass • ${config.templateId.category.title}\" onto your screen."
                 )
             },
             confirmButton = {
@@ -617,7 +726,7 @@ fun WidgetEditorScreen(
                     showManualPinDialog = false
                     onAfterPinOrSave()
                 }) {
-                    Text("Got It")
+                    Text("Done")
                 }
             }
         )
@@ -630,18 +739,17 @@ private fun EditorSectionCard(
     content: @Composable () -> Unit
 ) {
     Surface(
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+        shape = RoundedCornerShape(22.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(18.dp)) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(12.dp))
             content()
         }
     }

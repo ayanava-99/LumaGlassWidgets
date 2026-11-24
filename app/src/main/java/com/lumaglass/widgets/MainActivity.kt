@@ -5,6 +5,7 @@ import android.appwidget.AppWidgetManager
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.padding
@@ -14,6 +15,7 @@ import androidx.compose.material.icons.rounded.DashboardCustomize
 import androidx.compose.material.icons.rounded.Widgets
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -22,13 +24,16 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lumaglass.widgets.data.AppColorTheme
 import com.lumaglass.widgets.data.WidgetConfig
 import com.lumaglass.widgets.data.WidgetTemplateId
 import com.lumaglass.widgets.glance.refreshAllCategoryWidgets
@@ -43,7 +48,7 @@ import java.util.UUID
 
 private enum class MainTab(val label: String) {
     GALLERY("Gallery"),
-    MY_WIDGETS("My Widgets"),
+    MY_WIDGETS("Saved"),
     PRO("Pro")
 }
 
@@ -69,10 +74,17 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            LumaGlassTheme {
+            val selectedAppThemeId by app.repository.selectedAppThemeId
+                .collectAsStateWithLifecycle(initialValue = AppColorTheme.PIXEL_BLUE.id)
+            val appColorTheme = remember(selectedAppThemeId) {
+                AppColorTheme.fromId(selectedAppThemeId)
+            }
+
+            LumaGlassTheme(appTheme = appColorTheme) {
                 LumaGlassRootScreen(
                     activity = this,
                     app = app,
+                    appColorTheme = appColorTheme,
                     launchAppWidgetId = launchAppWidgetId,
                     isLauncherConfigure = isLauncherConfigure,
                     launchTemplateExtra = launchTemplateExtra
@@ -86,6 +98,7 @@ class MainActivity : ComponentActivity() {
 private fun LumaGlassRootScreen(
     activity: ComponentActivity,
     app: LumaGlassApp,
+    appColorTheme: AppColorTheme,
     launchAppWidgetId: Int,
     isLauncherConfigure: Boolean,
     launchTemplateExtra: WidgetTemplateId?
@@ -111,11 +124,29 @@ private fun LumaGlassRootScreen(
                 WidgetConfig(
                     instanceId = "appWidget_$launchAppWidgetId",
                     appWidgetId = launchAppWidgetId,
-                    templateId = launchTemplateExtra ?: WidgetTemplateId.FROSTED_DIGITAL_CLOCK
+                    templateId = launchTemplateExtra ?: WidgetTemplateId.MINIMAL_PILL_CLOCK
                 )
             } else null
         )
     }
+
+    // Bug fix: When a user taps an already-pinned widget on their home screen to reconfigure it,
+    // load their saved configuration from DataStore instead of overwriting it with default values.
+    LaunchedEffect(isLauncherConfigure, launchAppWidgetId) {
+        if (isLauncherConfigure && launchAppWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
+            val existing = app.repository.getWidgetConfigById("appWidget_$launchAppWidgetId")
+            if (existing != null) {
+                editingConfig = existing
+            }
+        }
+    }
+
+    // Bug fix: Intercept system back gesture when inside the in-app WidgetEditorScreen so
+    // pressing Back returns to the Gallery instead of exiting the app.
+    BackHandler(enabled = editingConfig != null && !isLauncherConfigure) {
+        editingConfig = null
+    }
+
     var adFallbackTemplate by remember { mutableStateOf<WidgetTemplateId?>(null) }
 
     val triggerRewardedUnlock: (WidgetTemplateId) -> Unit = { template ->
@@ -170,9 +201,13 @@ private fun LumaGlassRootScreen(
         )
     } else {
         Scaffold(
+            containerColor = MaterialTheme.colorScheme.background,
             snackbarHost = { SnackbarHost(snackbarHostState) },
             bottomBar = {
-                NavigationBar {
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                    tonalElevation = Dp.Hairline
+                ) {
                     NavigationBarItem(
                         selected = currentTab == MainTab.GALLERY,
                         onClick = { currentTab = MainTab.GALLERY },
@@ -199,8 +234,12 @@ private fun LumaGlassRootScreen(
                     isProUnlocked = isProUnlocked,
                     rewardedUnlocked = rewardedUnlocked,
                     selectedWallpaper = selectedWallpaper,
+                    selectedAppTheme = appColorTheme,
                     onSelectWallpaper = { backdrop ->
                         scope.launch { app.repository.setSelectedWallpaperId(backdrop.id) }
+                    },
+                    onSelectAppTheme = { theme ->
+                        scope.launch { app.repository.setSelectedAppThemeId(theme.id) }
                     },
                     onOpenWidgetEditor = { template ->
                         val existing = configuredWidgets.firstOrNull { it.templateId == template }
@@ -238,7 +277,15 @@ private fun LumaGlassRootScreen(
                     isProUnlocked = isProUnlocked,
                     proPriceLabel = proPriceLabel,
                     rewardedUnlocked = rewardedUnlocked,
+                    selectedAppTheme = appColorTheme,
+                    selectedWallpaper = selectedWallpaper,
                     billingStatusMessage = billingStatus,
+                    onSelectAppTheme = { theme ->
+                        scope.launch { app.repository.setSelectedAppThemeId(theme.id) }
+                    },
+                    onSelectWallpaper = { backdrop ->
+                        scope.launch { app.repository.setSelectedWallpaperId(backdrop.id) }
+                    },
                     onPurchasePro = { app.billingManager.launchProPurchaseFlow(activity) },
                     onRestorePurchases = { app.billingManager.restorePurchases() },
                     onWatchAdForWidget = triggerRewardedUnlock,

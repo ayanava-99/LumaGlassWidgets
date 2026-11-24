@@ -1,6 +1,7 @@
 package com.lumaglass.widgets.glance
 
 import android.app.ActivityManager
+import android.app.AlarmManager
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -8,21 +9,31 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.wifi.WifiManager
 import android.os.BatteryManager
+import android.os.Build
 import android.os.Environment
 import android.os.StatFs
+import android.os.SystemClock
 import android.provider.Settings
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
 
 data class DeviceTelemetry(
     val batteryPercent: Int,
     val isCharging: Boolean,
+    val batteryTempCelsius: Float,
+    val batteryVoltageVolts: Float,
     val storageUsedGb: Float,
     val storageTotalGb: Float,
     val ramUsedGb: Float,
     val ramTotalGb: Float,
     val isWifiConnected: Boolean,
     val wifiSsidOrStatus: String,
-    val brightnessPercent: Int
+    val brightnessPercent: Int,
+    val nextAlarmFormatted: String,
+    val uptimeFormatted: String,
+    val deviceModelLabel: String
 ) {
     val storagePercent: Int
         get() = if (storageTotalGb > 0f) ((storageUsedGb / storageTotalGb) * 100f).roundToInt().coerceIn(0, 100) else 0
@@ -49,6 +60,12 @@ object DeviceTelemetryReader {
         val status = batteryStatus?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
         val isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
             status == BatteryManager.BATTERY_STATUS_FULL
+
+        val rawTempTenths = batteryStatus?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 315) ?: 315
+        val tempC = (rawTempTenths / 10f).coerceIn(15f, 65f)
+
+        val rawVoltageMv = batteryStatus?.getIntExtra(BatteryManager.EXTRA_VOLTAGE, 4120) ?: 4120
+        val voltageV = if (rawVoltageMv > 100) rawVoltageMv / 1000f else 4.12f
 
         // Internal storage via StatFs
         val statFs = runCatching { StatFs(Environment.getDataDirectory().path) }.getOrNull()
@@ -84,16 +101,44 @@ object DeviceTelemetryReader {
         }.getOrDefault(150)
         val brightnessPct = ((rawBrightness / 255f) * 100f).roundToInt().coerceIn(5, 100)
 
+        // Next scheduled system alarm
+        val alarmMgr = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
+        val nextAlarmClock = runCatching { alarmMgr?.nextAlarmClock }.getOrNull()
+        val nextAlarmFormatted = if (nextAlarmClock != null && nextAlarmClock.triggerTime > 0L) {
+            val zdt = Instant.ofEpochMilli(nextAlarmClock.triggerTime).atZone(ZoneId.systemDefault())
+            zdt.format(DateTimeFormatter.ofPattern("EEE HH:mm"))
+        } else {
+            "No alarm set"
+        }
+
+        // System uptime since boot
+        val uptimeTotalMins = (SystemClock.elapsedRealtime() / 60_000L).coerceAtLeast(1L)
+        val uptimeDays = uptimeTotalMins / (60 * 24)
+        val uptimeHours = (uptimeTotalMins % (60 * 24)) / 60
+        val uptimeMins = uptimeTotalMins % 60
+        val uptimeFormatted = when {
+            uptimeDays > 0 -> "${uptimeDays}d ${uptimeHours}h ${uptimeMins}m"
+            uptimeHours > 0 -> "${uptimeHours}h ${uptimeMins}m"
+            else -> "${uptimeMins}m"
+        }
+
+        val deviceModelLabel = "${Build.MODEL ?: "Android"} • API ${Build.VERSION.SDK_INT}"
+
         return DeviceTelemetry(
             batteryPercent = batteryPct,
             isCharging = isCharging,
+            batteryTempCelsius = tempC,
+            batteryVoltageVolts = voltageV,
             storageUsedGb = storageUsedGb,
             storageTotalGb = storageTotalGb,
             ramUsedGb = ramUsedGb,
             ramTotalGb = ramTotalGb,
             isWifiConnected = isWifi,
             wifiSsidOrStatus = wifiLabel,
-            brightnessPercent = brightnessPct
+            brightnessPercent = brightnessPct,
+            nextAlarmFormatted = nextAlarmFormatted,
+            uptimeFormatted = uptimeFormatted,
+            deviceModelLabel = deviceModelLabel
         )
     }
 }

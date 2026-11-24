@@ -13,8 +13,10 @@ import androidx.glance.state.GlanceStateDefinition
 import androidx.glance.state.PreferencesGlanceStateDefinition
 import com.lumaglass.widgets.data.BitmapHelper
 import com.lumaglass.widgets.data.LumaPreferencesRepository
+import com.lumaglass.widgets.data.MoonPhaseCalculator
 import com.lumaglass.widgets.data.WidgetCategory
 import com.lumaglass.widgets.data.WidgetTemplateId
+import java.time.LocalDate
 import java.time.LocalTime
 
 abstract class BaseLumaGlanceWidget(
@@ -54,6 +56,7 @@ abstract class BaseLumaGlanceWidget(
 
         val telemetry = DeviceTelemetryReader.read(context)
         val now = LocalTime.now()
+        val today = LocalDate.now()
 
         val photoBitmap = when (config.templateId) {
             WidgetTemplateId.POLAROID_PHOTO -> {
@@ -67,6 +70,16 @@ abstract class BaseLumaGlanceWidget(
                     config.photoUri
                 }
                 BitmapHelper.loadSafeWidgetBitmap(context, activeUri, maxDim = 420)
+            }
+            else -> null
+        }
+
+        val abstractLayerBitmap = when (config.templateId) {
+            WidgetTemplateId.ABSTRACT_AURA_CLOCK -> {
+                BitmapHelper.renderAbstractAuraBitmap(darkText = darkText)
+            }
+            WidgetTemplateId.ABSTRACT_BREATHING_WAVE -> {
+                BitmapHelper.renderAbstractWaveBitmap(darkText = darkText)
             }
             else -> null
         }
@@ -86,6 +99,59 @@ abstract class BaseLumaGlanceWidget(
                     darkText = darkText
                 )
             }
+            WidgetTemplateId.ABSTRACT_GEOMETRIC_TIME -> {
+                BitmapHelper.renderAbstractGeometricDialBitmap(
+                    hour = now.hour,
+                    minute = now.minute,
+                    darkText = darkText
+                )
+            }
+            WidgetTemplateId.ABSTRACT_MOON_PHASE -> {
+                val moon = MoonPhaseCalculator.current()
+                BitmapHelper.renderMoonPhaseBitmap(
+                    illumination = moon.illuminationFraction,
+                    isWaxing = moon.isWaxing,
+                    darkText = darkText
+                )
+            }
+            WidgetTemplateId.ABSTRACT_CONCENTRIC_PROGRESS -> {
+                val dayFrac = (now.hour * 60 + now.minute) / 1440f
+                val monthFrac = today.dayOfMonth.toFloat() / today.lengthOfMonth().toFloat()
+                val yearFrac = today.dayOfYear.toFloat() / today.lengthOfYear().toFloat()
+                BitmapHelper.renderOrbitalRingsBitmap(
+                    dayFraction = dayFrac,
+                    monthFraction = monthFrac,
+                    yearFraction = yearFrac,
+                    darkText = darkText
+                )
+            }
+            WidgetTemplateId.ABSTRACT_SOLAR_ARC -> {
+                BitmapHelper.renderSolarHorizonArcBitmap(
+                    hour = now.hour,
+                    minute = now.minute,
+                    darkText = darkText
+                )
+            }
+            WidgetTemplateId.ABSTRACT_DOT_MATRIX_CLOCK -> {
+                BitmapHelper.renderDotMatrixClockBitmap(
+                    hour = now.hour,
+                    minute = now.minute,
+                    darkText = darkText
+                )
+            }
+            WidgetTemplateId.BINARY_TECH_CLOCK -> {
+                BitmapHelper.renderBinaryClockMatrixBitmap(
+                    hour = now.hour,
+                    minute = now.minute,
+                    darkText = darkText
+                )
+            }
+            WidgetTemplateId.MINIMAL_MONTH_CALENDAR -> {
+                BitmapHelper.renderMonthCalendarGridBitmap(
+                    date = today,
+                    darkText = darkText
+                )
+            }
             else -> null
         }
 
@@ -97,12 +163,15 @@ abstract class BaseLumaGlanceWidget(
                 telemetry = telemetry,
                 glassBackgroundBitmap = glassBackgroundBitmap,
                 photoBitmap = photoBitmap,
-                dialOrRingBitmap = dialOrRingBitmap
+                dialOrRingBitmap = dialOrRingBitmap,
+                abstractLayerBitmap = abstractLayerBitmap
             )
         }
     }
 }
 
+class MinimalGlanceWidget : BaseLumaGlanceWidget(WidgetCategory.MINIMAL)
+class AbstractGlanceWidget : BaseLumaGlanceWidget(WidgetCategory.ABSTRACT)
 class ClockGlanceWidget : BaseLumaGlanceWidget(WidgetCategory.CLOCKS)
 class BatteryGlanceWidget : BaseLumaGlanceWidget(WidgetCategory.BATTERY)
 class ProductivityGlanceWidget : BaseLumaGlanceWidget(WidgetCategory.PRODUCTIVITY)

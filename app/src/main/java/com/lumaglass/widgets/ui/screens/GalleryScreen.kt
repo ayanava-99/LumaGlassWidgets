@@ -1,7 +1,9 @@
 package com.lumaglass.widgets.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -22,18 +24,25 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.PlayCircleOutline
-import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -47,9 +56,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.lumaglass.widgets.data.AppColorTheme
 import com.lumaglass.widgets.data.GlassTintPreset
 import com.lumaglass.widgets.data.WidgetCategory
 import com.lumaglass.widgets.data.WidgetConfig
@@ -63,32 +75,52 @@ fun GalleryScreen(
     isProUnlocked: Boolean,
     rewardedUnlocked: Set<WidgetTemplateId>,
     selectedWallpaper: WallpaperBackdrop,
+    selectedAppTheme: AppColorTheme,
     onSelectWallpaper: (WallpaperBackdrop) -> Unit,
+    onSelectAppTheme: (AppColorTheme) -> Unit,
     onOpenWidgetEditor: (WidgetTemplateId) -> Unit,
     onWatchRewardedAd: (WidgetTemplateId) -> Unit,
     onOpenProUpgrade: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var selectedCategory by remember { mutableStateOf(WidgetCategory.ALL) }
+    var searchQuery by remember { mutableStateOf("") }
+    var showThemeDrawer by remember { mutableStateOf(false) }
     var lockedPromptTemplate by remember { mutableStateOf<WidgetTemplateId?>(null) }
 
-    val templates = remember(selectedCategory) {
-        if (selectedCategory == WidgetCategory.ALL) {
+    val templates = remember(selectedCategory, searchQuery) {
+        val byCategory = if (selectedCategory == WidgetCategory.ALL) {
             WidgetTemplateId.entries
         } else {
             WidgetTemplateId.entries.filter { it.category == selectedCategory }
         }
+        val q = searchQuery.trim()
+        if (q.isEmpty()) {
+            byCategory
+        } else {
+            byCategory.filter {
+                it.title.contains(q, ignoreCase = true) ||
+                    it.subtitle.contains(q, ignoreCase = true) ||
+                    it.category.title.contains(q, ignoreCase = true)
+            }
+        }
     }
 
-    Column(modifier = modifier.fillMaxSize()) {
-        // Header + Wallpaper backdrop switcher
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        // Minimal Google-style Header
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 14.dp)
+                .padding(top = 14.dp, bottom = 6.dp)
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -99,80 +131,180 @@ fun GalleryScreen(
                         color = MaterialTheme.colorScheme.onBackground
                     )
                     Text(
-                        text = "16 Liquid Glass Widgets • 100% Offline",
-                        style = MaterialTheme.typography.bodyMedium,
+                        text = "${WidgetTemplateId.entries.size} Liquid Glass Widgets • ${selectedAppTheme.label}",
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                Surface(
-                    shape = CircleShape,
-                    color = if (isProUnlocked) Color(0xFF0EA5E9).copy(alpha = 0.22f) else MaterialTheme.colorScheme.surfaceVariant,
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)),
-                    modifier = Modifier.clickable { onOpenProUpgrade() }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    FilledTonalIconButton(
+                        onClick = { showThemeDrawer = !showThemeDrawer },
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = if (showThemeDrawer) {
+                                MaterialTheme.colorScheme.secondaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.surfaceContainerHigh
+                            }
+                        )
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.AutoAwesome,
-                            contentDescription = null,
-                            tint = if (isProUnlocked) Color(0xFF7DD3FC) else Color(0xFFFDE68A),
-                            modifier = Modifier.size(16.dp)
+                            imageVector = Icons.Rounded.Palette,
+                            contentDescription = "Themes & Backdrops",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
                         )
-                        Spacer(Modifier.width(5.dp))
-                        Text(
-                            text = if (isProUnlocked) "PRO" else "₹49 PRO",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
+                    }
+
+                    Surface(
+                        shape = CircleShape,
+                        color = if (isProUnlocked) {
+                            MaterialTheme.colorScheme.primaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.surfaceContainerHigh
+                        },
+                        modifier = Modifier.clickable { onOpenProUpgrade() }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.AutoAwesome,
+                                contentDescription = null,
+                                tint = if (isProUnlocked) {
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.primary
+                                },
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(Modifier.width(5.dp))
+                            Text(
+                                text = if (isProUnlocked) "Pro" else "Get Pro",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = if (isProUnlocked) {
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                }
+                            )
+                        }
                     }
                 }
             }
 
-            Spacer(Modifier.height(12.dp))
-
-            // Wallpaper canvas swatches so users test glass widgets over different backdrops
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Canvas:",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                WallpaperBackdrop.entries.forEach { backdrop ->
-                    val active = backdrop == selectedWallpaper
-                    Surface(
-                        shape = CircleShape,
-                        color = if (active) Color.White.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.06f),
-                        border = BorderStroke(
-                            1.dp,
-                            if (active) Color(0xFF7DD3FC) else Color.White.copy(alpha = 0.12f)
-                        ),
-                        modifier = Modifier.clickable { onSelectWallpaper(backdrop) }
+            // Expandable Theme & Backdrop Studio Bar
+            AnimatedVisibility(visible = showThemeDrawer) {
+                Surface(
+                    shape = RoundedCornerShape(22.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 10.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
+                        Text(
+                            text = "App Color Theme",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                         Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            AppColorTheme.entries.forEach { theme ->
+                                val active = theme == selectedAppTheme
+                                Surface(
+                                    shape = CircleShape,
+                                    color = if (active) {
+                                        MaterialTheme.colorScheme.secondaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.surfaceContainerHigh
+                                    },
+                                    border = if (active) {
+                                        BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
+                                    } else null,
+                                    modifier = Modifier.clickable { onSelectAppTheme(theme) }
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(12.dp)
+                                                .clip(CircleShape)
+                                                .background(Color(theme.primaryHex))
+                                        )
+                                        Spacer(Modifier.width(6.dp))
+                                        Text(
+                                            text = theme.label,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        Text(
+                            text = "Preview Wallpaper Canvas",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(12.dp)
-                                    .clip(CircleShape)
-                                    .background(Brush.linearGradient(backdrop.colors))
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            Text(
-                                text = backdrop.label,
-                                fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.onBackground
-                            )
+                            WallpaperBackdrop.entries.forEach { backdrop ->
+                                val active = backdrop == selectedWallpaper
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier.clickable(role = Role.Button) {
+                                        onSelectWallpaper(backdrop)
+                                    }
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(28.dp)
+                                            .clip(CircleShape)
+                                            .then(
+                                                if (active) {
+                                                    Modifier.border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                                                } else {
+                                                    Modifier.border(1.dp, Color.White.copy(alpha = 0.16f), CircleShape)
+                                                }
+                                            )
+                                            .padding(if (active) 3.dp else 0.dp)
+                                            .clip(CircleShape)
+                                            .background(Brush.linearGradient(backdrop.colors))
+                                    )
+                                    Spacer(Modifier.height(3.dp))
+                                    Text(
+                                        text = backdrop.label,
+                                        fontSize = 10.sp,
+                                        color = if (active) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        }
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -180,47 +312,104 @@ fun GalleryScreen(
 
             Spacer(Modifier.height(10.dp))
 
-            // Category Filter Tabs
+            // Minimal Search Pill
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                placeholder = {
+                    Text(
+                        "Search 40 widgets (clock, calendar, habit, solar...)",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Rounded.Search,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                },
+                trailingIcon = if (searchQuery.isNotEmpty()) {
+                    {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(
+                                imageVector = Icons.Rounded.Close,
+                                contentDescription = "Clear search",
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                } else null,
+                singleLine = true,
+                shape = CircleShape,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = Color.Transparent
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+            )
+
+            Spacer(Modifier.height(10.dp))
+
+            // Clean Category Filter Chips
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 WidgetCategory.entries.forEach { category ->
                     val selected = category == selectedCategory
+                    val count = if (category == WidgetCategory.ALL) {
+                        WidgetTemplateId.entries.size
+                    } else {
+                        WidgetTemplateId.entries.count { it.category == category }
+                    }
                     FilterChip(
                         selected = selected,
                         onClick = { selectedCategory = category },
                         label = {
-                            val count = if (category == WidgetCategory.ALL) {
-                                WidgetTemplateId.entries.size
-                            } else {
-                                WidgetTemplateId.entries.count { it.category == category }
-                            }
-                            Text("${category.title} ($count)")
+                            Text(
+                                text = "${category.title} ($count)",
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        border = if (selected) {
+                            null
+                        } else {
+                            BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                         },
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            containerColor = Color.Transparent,
+                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                     )
                 }
             }
         }
 
-        // Widget Gallery Cards on live gradient wallpaper preview canvas
+        // Gallery List
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 6.dp, bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             items(templates, key = { it.name }) { template ->
                 val isUnlocked = isProUnlocked || template.isFreeByDefault || template in rewardedUnlocked
                 val sampleTint = when (template.category) {
+                    WidgetCategory.MINIMAL -> GlassTintPreset.FROSTED_WHITE
+                    WidgetCategory.ABSTRACT -> GlassTintPreset.MIDNIGHT_COBALT
                     WidgetCategory.CLOCKS -> GlassTintPreset.FROSTED_WHITE
                     WidgetCategory.BATTERY -> GlassTintPreset.PASTEL_BLUE
-                    WidgetCategory.PRODUCTIVITY -> GlassTintPreset.WARM_AMBER
+                    WidgetCategory.PRODUCTIVITY -> GlassTintPreset.EMERALD_MINT
                     WidgetCategory.PHOTO -> GlassTintPreset.SMOKED_DARK
                     WidgetCategory.ALL -> GlassTintPreset.FROSTED_WHITE
                 }
@@ -233,9 +422,8 @@ fun GalleryScreen(
                 }
 
                 Surface(
-                    shape = RoundedCornerShape(24.dp),
-                    color = MaterialTheme.colorScheme.surface,
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.09f)),
+                    shape = RoundedCornerShape(26.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainer,
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
@@ -246,49 +434,48 @@ fun GalleryScreen(
                             }
                         }
                 ) {
-                    Column {
+                    Column(modifier = Modifier.padding(10.dp)) {
                         WallpaperPreviewCanvas(
                             backdrop = selectedWallpaper,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(166.dp)
-                                .padding(18.dp)
+                                .height(164.dp)
+                                .clip(RoundedCornerShape(18.dp))
+                                .padding(16.dp)
                         ) {
                             GlassWidgetPreviewCard(
                                 config = previewConfig,
                                 compactMode = true,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(128.dp)
+                                    .height(130.dp)
                                     .align(Alignment.Center)
                             )
+
+                            // Whisper-quiet size / lock badge
                             Surface(
                                 shape = CircleShape,
-                                color = Color.Black.copy(alpha = 0.45f),
+                                color = Color.Black.copy(alpha = 0.36f),
                                 modifier = Modifier.align(Alignment.TopEnd)
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     if (!isUnlocked) {
                                         Icon(
                                             imageVector = Icons.Rounded.Lock,
-                                            contentDescription = "Locked",
-                                            tint = Color(0xFFFDE68A),
-                                            modifier = Modifier.size(12.dp)
+                                            contentDescription = "Pro",
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(11.dp)
                                         )
                                         Spacer(Modifier.width(4.dp))
                                     }
                                     Text(
-                                        text = when {
-                                            template.isFreeByDefault -> "FREE • ${template.defaultSizeLabel}"
-                                            isUnlocked -> "UNLOCKED • ${template.defaultSizeLabel}"
-                                            else -> "AD / PRO • ${template.defaultSizeLabel}"
-                                        },
+                                        text = if (isUnlocked) template.defaultSizeLabel else "Pro • ${template.defaultSizeLabel}",
                                         fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White
+                                        fontWeight = FontWeight.Medium,
+                                        color = Color.White.copy(alpha = 0.92f)
                                     )
                                 }
                             }
@@ -297,7 +484,7 @@ fun GalleryScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                                .padding(start = 8.dp, end = 4.dp, top = 12.dp, bottom = 6.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -305,33 +492,45 @@ fun GalleryScreen(
                                 Text(
                                     text = template.title,
                                     style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onSurface
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
+                                Spacer(Modifier.height(2.dp))
                                 Text(
                                     text = template.subtitle,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                             Spacer(Modifier.width(12.dp))
-                            if (isUnlocked) {
-                                Button(
-                                    onClick = { onOpenWidgetEditor(template) },
-                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
-                                ) {
-                                    Icon(Icons.Rounded.Tune, null, modifier = Modifier.size(16.dp))
-                                    Spacer(Modifier.width(6.dp))
-                                    Text("Customize", fontSize = 12.sp)
-                                }
-                            } else {
-                                OutlinedButton(
-                                    onClick = { lockedPromptTemplate = template },
-                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
-                                ) {
-                                    Icon(Icons.Rounded.PlayCircleOutline, null, modifier = Modifier.size(16.dp))
-                                    Spacer(Modifier.width(6.dp))
-                                    Text("Unlock", fontSize = 12.sp)
-                                }
+                            FilledTonalIconButton(
+                                onClick = {
+                                    if (isUnlocked) {
+                                        onOpenWidgetEditor(template)
+                                    } else {
+                                        lockedPromptTemplate = template
+                                    }
+                                },
+                                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                    containerColor = if (isUnlocked) {
+                                        MaterialTheme.colorScheme.secondaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.surfaceContainerHighest
+                                    }
+                                )
+                            ) {
+                                Icon(
+                                    imageVector = if (isUnlocked) {
+                                        Icons.AutoMirrored.Rounded.ArrowForward
+                                    } else {
+                                        Icons.Rounded.Lock
+                                    },
+                                    contentDescription = if (isUnlocked) "Customize" else "Unlock",
+                                    modifier = Modifier.size(18.dp)
+                                )
                             }
                         }
                     }
@@ -340,14 +539,14 @@ fun GalleryScreen(
         }
     }
 
-    // Unlock Modal for Locked Rewarded / Pro Widgets
     lockedPromptTemplate?.let { template ->
         AlertDialog(
             onDismissRequest = { lockedPromptTemplate = null },
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             title = { Text("Unlock ${template.title}") },
             text = {
                 Text(
-                    "Watch one short rewarded ad to unlock this widget permanently on your device, or upgrade to LumaGlass Pro (₹49 one-time) to unlock all 16 widgets, remove ads, and unlock custom hex colors."
+                    "Watch one short ad to unlock this widget permanently, or upgrade to LumaGlass Pro (₹49 one-time) for all ${WidgetTemplateId.entries.size} widgets, custom hex tints, and zero ads."
                 )
             },
             confirmButton = {
@@ -359,7 +558,7 @@ fun GalleryScreen(
                 ) {
                     Icon(Icons.Rounded.PlayCircleOutline, null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Watch Ad to Unlock")
+                    Text("Watch Ad")
                 }
             },
             dismissButton = {
@@ -377,7 +576,7 @@ fun GalleryScreen(
                             onOpenProUpgrade()
                         }
                     ) {
-                        Text("Go Pro ₹49")
+                        Text("Pro ₹49")
                     }
                 }
             }

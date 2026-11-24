@@ -93,6 +93,32 @@
                 android:resource="@xml/widget_info_photo" />
         </receiver>
 
+        <!-- Category 5: Minimal Widgets -->
+        <receiver
+            android:name=".glance.MinimalWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_label_minimal">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_minimal" />
+        </receiver>
+
+        <!-- Category 6: Abstract Widgets -->
+        <receiver
+            android:name=".glance.AbstractWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_label_abstract">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_abstract" />
+        </receiver>
+
     </application>
 
 </manifest>
