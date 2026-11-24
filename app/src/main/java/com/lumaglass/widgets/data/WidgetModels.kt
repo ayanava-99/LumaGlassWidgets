@@ -613,3 +613,107 @@ object MoonPhaseCalculator {
         )
     }
 }
+
+fun WidgetConfig.usesProStyling(): Boolean =
+    surfaceTexture != GlassSurfaceTexture.CRYSTAL_FROST ||
+        fontStyle != FontStylePreset.SANS_CLEAN ||
+        !customHexColor.isNullOrBlank()
+
+data class DockAppOption(
+    val shortLabel: String,
+    val displayName: String,
+    val packageName: String
+)
+
+object DockAppPresets {
+    val options: List<DockAppOption> = listOf(
+        DockAppOption("Phone", "Phone", "com.android.dialer"),
+        DockAppOption("Msgs", "Messages", "com.google.android.apps.messaging"),
+        DockAppOption("WA", "WhatsApp", "com.whatsapp"),
+        DockAppOption("IG", "Instagram", "com.instagram.android"),
+        DockAppOption("YT", "YouTube", "com.google.android.youtube"),
+        DockAppOption("Spot", "Spotify", "com.spotify.music"),
+        DockAppOption("Web", "Chrome", "com.android.chrome"),
+        DockAppOption("Cam", "Camera", "com.android.camera2"),
+        DockAppOption("Maps", "Maps", "com.google.android.apps.maps"),
+        DockAppOption("Pay", "GPay", "com.google.android.apps.nbu.paisa.user"),
+        DockAppOption("Mail", "Gmail", "com.google.android.gm"),
+        DockAppOption("Calc", "Calculator", "com.google.android.calculator")
+    )
+
+    fun shortLabelForPackage(pkg: String?): String =
+        options.firstOrNull { it.packageName == pkg }?.shortLabel
+            ?: pkg?.substringAfterLast('.')?.take(5)?.replaceFirstChar { it.uppercase() }
+            ?: "App"
+}
+
+data class CuratedStylePack(
+    val id: String,
+    val title: String,
+    val tag: String,
+    val templateId: WidgetTemplateId,
+    val tintPreset: GlassTintPreset,
+    val surfaceTexture: GlassSurfaceTexture,
+    val fontStyle: FontStylePreset,
+    val opacity: Float,
+    val cornerRadiusDp: Int
+) {
+    fun toConfig(instanceId: String): WidgetConfig = WidgetConfig(
+        instanceId = instanceId,
+        templateId = templateId,
+        tintPreset = tintPreset,
+        surfaceTexture = surfaceTexture,
+        fontStyle = fontStyle,
+        opacity = opacity,
+        cornerRadiusDp = cornerRadiusDp
+    )
+}
+
+object CuratedWidgetPacks {
+    val items: List<CuratedStylePack> = listOf(
+        CuratedStylePack(
+            id = "nothing_dot",
+            title = "Nothing Dot OS",
+            tag = "Retro LED",
+            templateId = WidgetTemplateId.ABSTRACT_DOT_MATRIX_CLOCK,
+            tintPreset = GlassTintPreset.SMOKED_DARK,
+            surfaceTexture = GlassSurfaceTexture.PRISM_EDGE,
+            fontStyle = FontStylePreset.MONO_TECH,
+            opacity = 0.86f,
+            cornerRadiusDp = 24
+        ),
+        CuratedStylePack(
+            id = "upsc_desk",
+            title = "UPSC / GATE Desk",
+            tag = "Focus",
+            templateId = WidgetTemplateId.EXAM_COUNTDOWN,
+            tintPreset = GlassTintPreset.EMERALD_MINT,
+            surfaceTexture = GlassSurfaceTexture.MATTE_SATIN,
+            fontStyle = FontStylePreset.SANS_CLEAN,
+            opacity = 0.82f,
+            cornerRadiusDp = 24
+        ),
+        CuratedStylePack(
+            id = "pixel_calm",
+            title = "Pixel Calm",
+            tag = "Minimal",
+            templateId = WidgetTemplateId.MINIMAL_PILL_CLOCK,
+            tintPreset = GlassTintPreset.FROSTED_WHITE,
+            surfaceTexture = GlassSurfaceTexture.CRYSTAL_FROST,
+            fontStyle = FontStylePreset.SANS_CLEAN,
+            opacity = 0.78f,
+            cornerRadiusDp = 28
+        ),
+        CuratedStylePack(
+            id = "solar_horizon",
+            title = "Solar Horizon",
+            tag = "Aesthetic",
+            templateId = WidgetTemplateId.ABSTRACT_SOLAR_ARC,
+            tintPreset = GlassTintPreset.MIDNIGHT_COBALT,
+            surfaceTexture = GlassSurfaceTexture.SOFT_HALO,
+            fontStyle = FontStylePreset.SERIF_EDITORIAL,
+            opacity = 0.84f,
+            cornerRadiusDp = 26
+        )
+    )
+}

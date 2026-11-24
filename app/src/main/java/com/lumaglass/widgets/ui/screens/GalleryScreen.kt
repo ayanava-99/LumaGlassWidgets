@@ -27,6 +27,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.PlayCircleOutline
@@ -62,6 +64,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lumaglass.widgets.data.AppColorTheme
+import com.lumaglass.widgets.data.CuratedStylePack
+import com.lumaglass.widgets.data.CuratedWidgetPacks
 import com.lumaglass.widgets.data.GlassTintPreset
 import com.lumaglass.widgets.data.WidgetCategory
 import com.lumaglass.widgets.data.WidgetConfig
@@ -74,25 +78,29 @@ import com.lumaglass.widgets.ui.theme.WallpaperPreviewCanvas
 fun GalleryScreen(
     isProUnlocked: Boolean,
     rewardedUnlocked: Set<WidgetTemplateId>,
+    favoriteTemplates: Set<WidgetTemplateId>,
     selectedWallpaper: WallpaperBackdrop,
     selectedAppTheme: AppColorTheme,
     onSelectWallpaper: (WallpaperBackdrop) -> Unit,
     onSelectAppTheme: (AppColorTheme) -> Unit,
+    onToggleFavorite: (WidgetTemplateId) -> Unit,
     onOpenWidgetEditor: (WidgetTemplateId) -> Unit,
+    onOpenCuratedPack: (CuratedStylePack) -> Unit,
     onWatchRewardedAd: (WidgetTemplateId) -> Unit,
     onOpenProUpgrade: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var selectedCategory by remember { mutableStateOf(WidgetCategory.ALL) }
+    var showFavoritesOnly by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var showThemeDrawer by remember { mutableStateOf(false) }
     var lockedPromptTemplate by remember { mutableStateOf<WidgetTemplateId?>(null) }
 
-    val templates = remember(selectedCategory, searchQuery) {
-        val byCategory = if (selectedCategory == WidgetCategory.ALL) {
-            WidgetTemplateId.entries
-        } else {
-            WidgetTemplateId.entries.filter { it.category == selectedCategory }
+    val templates = remember(selectedCategory, showFavoritesOnly, favoriteTemplates, searchQuery) {
+        val byCategory = when {
+            showFavoritesOnly -> WidgetTemplateId.entries.filter { it in favoriteTemplates }
+            selectedCategory == WidgetCategory.ALL -> WidgetTemplateId.entries
+            else -> WidgetTemplateId.entries.filter { it.category == selectedCategory }
         }
         val q = searchQuery.trim()
         if (q.isEmpty()) {
@@ -355,7 +363,7 @@ fun GalleryScreen(
 
             Spacer(Modifier.height(10.dp))
 
-            // Clean Category Filter Chips
+            // Clean Category Filter Chips + Favorites Chip
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -363,8 +371,34 @@ fun GalleryScreen(
                     .padding(horizontal = 20.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                FilterChip(
+                    selected = showFavoritesOnly,
+                    onClick = { showFavoritesOnly = !showFavoritesOnly },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = if (showFavoritesOnly) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    },
+                    label = {
+                        Text(
+                            text = "Saved (${favoriteTemplates.size})",
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    border = if (showFavoritesOnly) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = Color.Transparent,
+                        labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                )
+
                 WidgetCategory.entries.forEach { category ->
-                    val selected = category == selectedCategory
+                    val selected = !showFavoritesOnly && category == selectedCategory
                     val count = if (category == WidgetCategory.ALL) {
                         WidgetTemplateId.entries.size
                     } else {
@@ -372,7 +406,10 @@ fun GalleryScreen(
                     }
                     FilterChip(
                         selected = selected,
-                        onClick = { selectedCategory = category },
+                        onClick = {
+                            showFavoritesOnly = false
+                            selectedCategory = category
+                        },
                         label = {
                             Text(
                                 text = "${category.title} ($count)",
@@ -402,8 +439,96 @@ fun GalleryScreen(
             contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 6.dp, bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            if (selectedCategory == WidgetCategory.ALL && !showFavoritesOnly && searchQuery.isBlank()) {
+                item(key = "curated_packs_section") {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(
+                            text = "1-Tap Curated Setup Packs",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            CuratedWidgetPacks.items.forEach { pack ->
+                                val packUnlocked = isProUnlocked ||
+                                    pack.templateId.isFreeByDefault ||
+                                    pack.templateId in rewardedUnlocked
+                                val packPreview = remember(pack) { pack.toConfig("pack_${pack.id}") }
+                                Surface(
+                                    shape = RoundedCornerShape(22.dp),
+                                    color = MaterialTheme.colorScheme.surfaceContainer,
+                                    modifier = Modifier
+                                        .width(216.dp)
+                                        .clickable {
+                                            if (packUnlocked) {
+                                                onOpenCuratedPack(pack)
+                                            } else {
+                                                lockedPromptTemplate = pack.templateId
+                                            }
+                                        }
+                                ) {
+                                    Column(modifier = Modifier.padding(8.dp)) {
+                                        WallpaperPreviewCanvas(
+                                            backdrop = selectedWallpaper,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(112.dp)
+                                                .clip(RoundedCornerShape(16.dp))
+                                                .padding(10.dp)
+                                        ) {
+                                            GlassWidgetPreviewCard(
+                                                config = packPreview,
+                                                compactMode = true,
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .align(Alignment.Center)
+                                            )
+                                        }
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 6.dp, vertical = 8.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    text = pack.title,
+                                                    style = MaterialTheme.typography.labelLarge,
+                                                    color = MaterialTheme.colorScheme.onSurface,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                                Text(
+                                                    text = pack.tag,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+                                            if (!packUnlocked) {
+                                                Icon(
+                                                    imageVector = Icons.Rounded.Lock,
+                                                    contentDescription = "Locked",
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(15.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             items(templates, key = { it.name }) { template ->
                 val isUnlocked = isProUnlocked || template.isFreeByDefault || template in rewardedUnlocked
+                val isFavorite = template in favoriteTemplates
                 val sampleTint = when (template.category) {
                     WidgetCategory.MINIMAL -> GlassTintPreset.FROSTED_WHITE
                     WidgetCategory.ABSTRACT -> GlassTintPreset.MIDNIGHT_COBALT
@@ -505,7 +630,15 @@ fun GalleryScreen(
                                     overflow = TextOverflow.Ellipsis
                                 )
                             }
-                            Spacer(Modifier.width(12.dp))
+                            Spacer(Modifier.width(8.dp))
+                            IconButton(onClick = { onToggleFavorite(template) }) {
+                                Icon(
+                                    imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                                    contentDescription = if (isFavorite) "Remove favorite" else "Save favorite",
+                                    tint = if (isFavorite) Color(0xFFF43F5E) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                             FilledTonalIconButton(
                                 onClick = {
                                     if (isUnlocked) {

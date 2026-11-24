@@ -1,6 +1,8 @@
 package com.lumaglass.widgets.glance
 
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import com.lumaglass.widgets.data.LumaPreferencesRepository
@@ -47,4 +49,17 @@ class MinimalWidgetReceiver : BaseLumaWidgetReceiver() {
 
 class AbstractWidgetReceiver : BaseLumaWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = AbstractGlanceWidget()
+}
+
+class SystemEventWidgetReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        val pendingResult = goAsync()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                refreshAllCategoryWidgets(context.applicationContext)
+            } finally {
+                pendingResult.finish()
+            }
+        }
+    }
 }

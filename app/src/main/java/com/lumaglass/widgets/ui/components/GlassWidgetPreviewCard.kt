@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lumaglass.widgets.data.BitmapHelper
 import com.lumaglass.widgets.data.CuratedQuotes
+import com.lumaglass.widgets.data.DockAppPresets
 import com.lumaglass.widgets.data.FontStylePreset
 import com.lumaglass.widgets.data.GlassSurfaceTexture
 import com.lumaglass.widgets.data.GlassTintPreset
@@ -1412,20 +1413,24 @@ fun GlassWidgetPreviewCard(
                         )
                         Spacer(Modifier.height(8.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            listOf(
-                                Icons.Rounded.Call,
-                                Icons.Rounded.ChatBubbleOutline,
-                                Icons.Rounded.Public,
-                                Icons.Rounded.CameraAlt
-                            ).forEach { icon ->
+                            for (idx in 0 until 4) {
+                                val label = DockAppPresets.shortLabelForPackage(
+                                    config.favoritePackages.getOrNull(idx)
+                                )
                                 Box(
                                     modifier = Modifier
-                                        .size(34.dp)
                                         .clip(RoundedCornerShape(10.dp))
-                                        .background(pillColor),
+                                        .background(pillColor)
+                                        .padding(horizontal = 9.dp, vertical = 8.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(icon, null, tint = primaryText, modifier = Modifier.size(18.dp))
+                                    Text(
+                                        text = label,
+                                        color = primaryText,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = fontFamily
+                                    )
                                 }
                             }
                         }

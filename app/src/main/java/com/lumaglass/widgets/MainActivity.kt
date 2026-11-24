@@ -37,6 +37,7 @@ import com.lumaglass.widgets.data.AppColorTheme
 import com.lumaglass.widgets.data.WidgetConfig
 import com.lumaglass.widgets.data.WidgetTemplateId
 import com.lumaglass.widgets.glance.refreshAllCategoryWidgets
+import com.lumaglass.widgets.ui.components.ShareHelper
 import com.lumaglass.widgets.ui.screens.GalleryScreen
 import com.lumaglass.widgets.ui.screens.MyWidgetsScreen
 import com.lumaglass.widgets.ui.screens.ProSettingsScreen
@@ -108,6 +109,7 @@ private fun LumaGlassRootScreen(
 
     val isProUnlocked by app.repository.isProUnlocked.collectAsStateWithLifecycle(initialValue = false)
     val rewardedUnlocked by app.repository.rewardedUnlockedTemplates.collectAsStateWithLifecycle(initialValue = emptySet())
+    val favoriteTemplates by app.repository.favoriteTemplates.collectAsStateWithLifecycle(initialValue = emptySet())
     val configuredWidgets by app.repository.configuredWidgets.collectAsStateWithLifecycle(initialValue = emptyList())
     val selectedWallpaperId by app.repository.selectedWallpaperId.collectAsStateWithLifecycle(initialValue = "aurora")
     val proPriceLabel by app.billingManager.proPriceLabel.collectAsStateWithLifecycle()
@@ -148,6 +150,8 @@ private fun LumaGlassRootScreen(
     }
 
     var adFallbackTemplate by remember { mutableStateOf<WidgetTemplateId?>(null) }
+    var adStylePassCallback by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var showReviewPromptDialog by remember { mutableStateOf(false) }
 
     val triggerRewardedUnlock: (WidgetTemplateId) -> Unit = { template ->
         app.adMobManager.showRewardedAdToUnlock(
@@ -174,6 +178,9 @@ private fun LumaGlassRootScreen(
             onSaveConfig = { saved ->
                 app.repository.saveWidgetConfig(saved)
                 refreshAllCategoryWidgets(activity.applicationContext)
+                if (app.repository.incrementSaveCountAndCheckReviewPrompt()) {
+                    showReviewPromptDialog = true
+                }
             },
             onBack = {
                 if (isLauncherConfigure) {
@@ -182,9 +189,17 @@ private fun LumaGlassRootScreen(
                     editingConfig = null
                 }
             },
-            onOpenProUpgrade = {
-                editingConfig = null
-                currentTab = MainTab.PRO
+            onWatchAdForStylePass = { onGranted ->
+                app.adMobManager.showRewardedAdToUnlock(
+                    activity = activity,
+                    onRewardEarned = onGranted,
+                    onUnavailable = {
+                        adStylePassCallback = onGranted
+                    }
+                )
+            },
+            onPurchaseProDirect = {
+                app.billingManager.launchProPurchaseFlow(activity)
             },
             onAfterPinOrSave = {
                 app.adMobManager.showGentleInterstitialAfterSave(activity, isProUnlocked) {
@@ -233,6 +248,7 @@ private fun LumaGlassRootScreen(
                 MainTab.GALLERY -> GalleryScreen(
                     isProUnlocked = isProUnlocked,
                     rewardedUnlocked = rewardedUnlocked,
+                    favoriteTemplates = favoriteTemplates,
                     selectedWallpaper = selectedWallpaper,
                     selectedAppTheme = appColorTheme,
                     onSelectWallpaper = { backdrop ->
@@ -241,11 +257,19 @@ private fun LumaGlassRootScreen(
                     onSelectAppTheme = { theme ->
                         scope.launch { app.repository.setSelectedAppThemeId(theme.id) }
                     },
+                    onToggleFavorite = { template ->
+                        scope.launch { app.repository.toggleFavoriteTemplate(template) }
+                    },
                     onOpenWidgetEditor = { template ->
                         val existing = configuredWidgets.firstOrNull { it.templateId == template }
                         editingConfig = existing ?: WidgetConfig(
                             instanceId = "preset_${template.name}_${UUID.randomUUID().toString().take(6)}",
                             templateId = template
+                        )
+                    },
+                    onOpenCuratedPack = { pack ->
+                        editingConfig = pack.toConfig(
+                            instanceId = "preset_${pack.templateId.name}_${UUID.randomUUID().toString().take(6)}"
                         )
                     },
                     onWatchRewardedAd = triggerRewardedUnlock,
@@ -337,6 +361,62 @@ private fun LumaGlassRootScreen(
             },
             dismissButton = {
                 TextButton(onClick = { adFallbackTemplate = null }) { Text("Close") }
+            }
+        )
+    }
+
+    adStylePassCallback?.let { onGranted ->
+        AlertDialog(
+            onDismissRequest = { adStylePassCallback = null },
+            title = { Text("Ad Unavailable Offline") },
+            text = {
+                Text(
+                    if (BuildConfig.DEBUG) {
+                        "Google Test Rewarded Ad couldn't load offline. Simulate watching the ad to test pinning with Pro styling?"
+                    } else {
+                        "Please check your internet connection to load the rewarded ad, or unlock Lifetime Pro (₹49)."
+                    }
+                )
+            },
+            confirmButton = {
+                if (BuildConfig.DEBUG) {
+                    TextButton(onClick = {
+                        adStylePassCallback = null
+                        onGranted()
+                    }) {
+                        Text("Simulate Reward & Pin")
+                    }
+                } else {
+                    TextButton(onClick = { adStylePassCallback = null }) { Text("OK") }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { adStylePassCallback = null }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (showReviewPromptDialog && editingConfig == null) {
+        AlertDialog(
+            onDismissRequest = { showReviewPromptDialog = false },
+            title = { Text("Enjoying LumaGlass? ⭐") },
+            text = {
+                Text(
+                    "Your widgets are looking clean! If LumaGlass made your home screen better, a quick 5-star rating on Google Play helps us grow and add more widgets."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showReviewPromptDialog = false
+                    ShareHelper.openPlayStoreListing(activity)
+                }) {
+                    Text("Rate 5★ on Play Store")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showReviewPromptDialog = false }) {
+                    Text("Maybe Later")
+                }
             }
         )
     }

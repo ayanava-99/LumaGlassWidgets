@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -27,9 +28,12 @@ class LumaPreferencesRepository(private val context: Context) {
     private object Keys {
         val IS_PRO_UNLOCKED = booleanPreferencesKey("is_pro_unlocked")
         val REWARDED_UNLOCKS = stringSetPreferencesKey("rewarded_unlocked_templates")
+        val FAVORITE_TEMPLATES = stringSetPreferencesKey("favorite_templates")
         val WIDGET_CONFIGS_JSON = stringPreferencesKey("widget_configs_json")
         val SELECTED_WALLPAPER_INDEX = stringPreferencesKey("selected_wallpaper_id")
         val SELECTED_APP_THEME_ID = stringPreferencesKey("selected_app_theme_id")
+        val WIDGET_SAVE_COUNT = intPreferencesKey("widget_save_count")
+        val HAS_SHOWN_REVIEW_PROMPT = booleanPreferencesKey("has_shown_review_prompt")
     }
 
     val isProUnlocked: Flow<Boolean> = context.lumaDataStore.data.map { prefs ->
@@ -38,6 +42,13 @@ class LumaPreferencesRepository(private val context: Context) {
 
     val rewardedUnlockedTemplates: Flow<Set<WidgetTemplateId>> = context.lumaDataStore.data.map { prefs ->
         val raw = prefs[Keys.REWARDED_UNLOCKS] ?: emptySet()
+        raw.mapNotNull { name ->
+            runCatching { WidgetTemplateId.valueOf(name) }.getOrNull()
+        }.toSet()
+    }
+
+    val favoriteTemplates: Flow<Set<WidgetTemplateId>> = context.lumaDataStore.data.map { prefs ->
+        val raw = prefs[Keys.FAVORITE_TEMPLATES] ?: emptySet()
         raw.mapNotNull { name ->
             runCatching { WidgetTemplateId.valueOf(name) }.getOrNull()
         }.toSet()
@@ -80,6 +91,31 @@ class LumaPreferencesRepository(private val context: Context) {
             val current = prefs[Keys.REWARDED_UNLOCKS] ?: emptySet()
             prefs[Keys.REWARDED_UNLOCKS] = current + templateId.name
         }
+    }
+
+    suspend fun toggleFavoriteTemplate(templateId: WidgetTemplateId) {
+        context.lumaDataStore.edit { prefs ->
+            val current = prefs[Keys.FAVORITE_TEMPLATES] ?: emptySet()
+            prefs[Keys.FAVORITE_TEMPLATES] = if (templateId.name in current) {
+                current - templateId.name
+            } else {
+                current + templateId.name
+            }
+        }
+    }
+
+    suspend fun incrementSaveCountAndCheckReviewPrompt(): Boolean {
+        var shouldPrompt = false
+        context.lumaDataStore.edit { prefs ->
+            val nextCount = (prefs[Keys.WIDGET_SAVE_COUNT] ?: 0) + 1
+            prefs[Keys.WIDGET_SAVE_COUNT] = nextCount
+            val alreadyShown = prefs[Keys.HAS_SHOWN_REVIEW_PROMPT] ?: false
+            if (nextCount >= 2 && !alreadyShown) {
+                shouldPrompt = true
+                prefs[Keys.HAS_SHOWN_REVIEW_PROMPT] = true
+            }
+        }
+        return shouldPrompt
     }
 
     suspend fun isTemplateUnlocked(templateId: WidgetTemplateId): Boolean {

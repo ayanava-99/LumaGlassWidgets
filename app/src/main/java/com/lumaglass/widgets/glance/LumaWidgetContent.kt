@@ -4,17 +4,22 @@ import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.util.TypedValue
+import android.widget.RemoteViews
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceModifier
 import androidx.glance.Image
 import androidx.glance.ImageProvider
+import androidx.glance.LocalContext
 import androidx.glance.LocalSize
 import androidx.glance.action.actionParametersOf
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
+import androidx.glance.appwidget.AndroidRemoteViews
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.action.actionStartActivity as actionStartIntentActivity
 import androidx.glance.appwidget.cornerRadius
@@ -40,7 +45,9 @@ import androidx.glance.text.TextDecoration
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.lumaglass.widgets.MainActivity
+import com.lumaglass.widgets.R
 import com.lumaglass.widgets.data.CuratedQuotes
+import com.lumaglass.widgets.data.DockAppPresets
 import com.lumaglass.widgets.data.FontStylePreset
 import com.lumaglass.widgets.data.MoonPhaseCalculator
 import com.lumaglass.widgets.data.WidgetConfig
@@ -128,21 +135,16 @@ fun LumaWidgetContent(
         ) {
             when (config.templateId) {
                 WidgetTemplateId.MINIMAL_PILL_CLOCK -> {
-                    val now = LocalTime.now()
                     val dateStr = LocalDate.now().format(DateTimeFormatter.ofPattern("EEE, MMM d"))
                     Row(
                         modifier = GlanceModifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(
-                            text = now.format(DateTimeFormatter.ofPattern("HH:mm")),
-                            style = TextStyle(
-                                color = ColorProvider(primaryColor),
-                                fontSize = if (isWide) 32.sp else 26.sp,
-                                fontWeight = FontWeight.Medium,
-                                fontFamily = fontFamily
-                            )
+                        LiveGlanceClock(
+                            color = primaryColor,
+                            fontSizeSp = if (isWide) 32f else 26f,
+                            fontStyle = config.fontStyle
                         )
                         if (isWide) {
                             Spacer(GlanceModifier.width(12.dp))
@@ -338,10 +340,8 @@ fun LumaWidgetContent(
                 }
 
                 WidgetTemplateId.MINIMAL_WORLD_CLOCK -> {
-                    val localNow = LocalTime.now()
                     val remoteZone = runCatching { ZoneId.of(config.worldClockZoneId) }
                         .getOrElse { ZoneId.of("Europe/London") }
-                    val remoteNow = ZonedDateTime.now(remoteZone)
                     Row(
                         modifier = GlanceModifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
@@ -359,14 +359,10 @@ fun LumaWidgetContent(
                                     fontFamily = fontFamily
                                 )
                             )
-                            Text(
-                                text = localNow.format(DateTimeFormatter.ofPattern("HH:mm")),
-                                style = TextStyle(
-                                    color = ColorProvider(primaryColor),
-                                    fontSize = 24.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = fontFamily
-                                )
+                            LiveGlanceClock(
+                                color = primaryColor,
+                                fontSizeSp = 24f,
+                                fontStyle = config.fontStyle
                             )
                         }
                         Column(
@@ -383,21 +379,17 @@ fun LumaWidgetContent(
                                     fontFamily = fontFamily
                                 )
                             )
-                            Text(
-                                text = remoteNow.format(DateTimeFormatter.ofPattern("HH:mm")),
-                                style = TextStyle(
-                                    color = ColorProvider(primaryColor),
-                                    fontSize = 24.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = fontFamily
-                                )
+                            LiveGlanceClock(
+                                color = primaryColor,
+                                fontSizeSp = 24f,
+                                fontStyle = config.fontStyle,
+                                timeZone = remoteZone.id
                             )
                         }
                     }
                 }
 
                 WidgetTemplateId.MINIMAL_NEXT_ALARM -> {
-                    val now = LocalTime.now()
                     Row(
                         modifier = GlanceModifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
@@ -439,14 +431,10 @@ fun LumaWidgetContent(
                                     .cornerRadius(14.dp)
                                     .padding(horizontal = 12.dp, vertical = 8.dp)
                             ) {
-                                Text(
-                                    text = now.format(DateTimeFormatter.ofPattern("HH:mm")),
-                                    style = TextStyle(
-                                        color = ColorProvider(primaryColor),
-                                        fontSize = 18.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        fontFamily = fontFamily
-                                    )
+                                LiveGlanceClock(
+                                    color = primaryColor,
+                                    fontSizeSp = 18f,
+                                    fontStyle = config.fontStyle
                                 )
                             }
                         }
@@ -454,15 +442,10 @@ fun LumaWidgetContent(
                 }
 
                 WidgetTemplateId.ABSTRACT_AURA_CLOCK -> {
-                    val now = LocalTime.now()
-                    Text(
-                        text = now.format(DateTimeFormatter.ofPattern("HH:mm")),
-                        style = TextStyle(
-                            color = ColorProvider(primaryColor),
-                            fontSize = if (isWide) 36.sp else 28.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = fontFamily
-                        )
+                    LiveGlanceClock(
+                        color = primaryColor,
+                        fontSizeSp = if (isWide) 36f else 28f,
+                        fontStyle = config.fontStyle
                     )
                     Spacer(GlanceModifier.height(3.dp))
                     Text(
@@ -477,19 +460,14 @@ fun LumaWidgetContent(
                 }
 
                 WidgetTemplateId.ABSTRACT_BREATHING_WAVE -> {
-                    val now = LocalTime.now()
                     Column(
                         modifier = GlanceModifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.Start
                     ) {
-                        Text(
-                            text = now.format(DateTimeFormatter.ofPattern("HH:mm")),
-                            style = TextStyle(
-                                color = ColorProvider(primaryColor),
-                                fontSize = 28.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = fontFamily
-                            )
+                        LiveGlanceClock(
+                            color = primaryColor,
+                            fontSizeSp = 28f,
+                            fontStyle = config.fontStyle
                         )
                         Spacer(GlanceModifier.height(2.dp))
                         Text(
@@ -530,14 +508,10 @@ fun LumaWidgetContent(
                             )
                         )
                         Spacer(GlanceModifier.defaultWeight())
-                        Text(
-                            text = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm")),
-                            style = TextStyle(
-                                color = ColorProvider(primaryColor),
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = fontFamily
-                            )
+                        LiveGlanceClock(
+                            color = primaryColor,
+                            fontSizeSp = 13f,
+                            fontStyle = config.fontStyle
                         )
                         Spacer(GlanceModifier.defaultWeight())
                         Text(
@@ -560,14 +534,10 @@ fun LumaWidgetContent(
                         )
                     }
                     Spacer(GlanceModifier.height(3.dp))
-                    Text(
-                        text = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm")),
-                        style = TextStyle(
-                            color = ColorProvider(secondaryColor),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = fontFamily
-                        )
+                    LiveGlanceClock(
+                        color = secondaryColor,
+                        fontSizeSp = 12f,
+                        fontStyle = config.fontStyle
                     )
                 }
 
@@ -678,16 +648,11 @@ fun LumaWidgetContent(
                 }
 
                 WidgetTemplateId.FROSTED_DIGITAL_CLOCK -> {
-                    val now = LocalTime.now()
                     val dateStr = LocalDate.now().format(DateTimeFormatter.ofPattern("EEE, d MMM"))
-                    Text(
-                        text = now.format(DateTimeFormatter.ofPattern("HH:mm")),
-                        style = TextStyle(
-                            color = ColorProvider(primaryColor),
-                            fontSize = if (isWide) 40.sp else 30.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = fontFamily
-                        )
+                    LiveGlanceClock(
+                        color = primaryColor,
+                        fontSizeSp = if (isWide) 40f else 30f,
+                        fontStyle = config.fontStyle
                     )
                     Spacer(GlanceModifier.height(4.dp))
                     Text(
@@ -702,14 +667,25 @@ fun LumaWidgetContent(
                 }
 
                 WidgetTemplateId.MINIMAL_FLIP_CLOCK -> {
-                    val now = LocalTime.now()
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        FlipTile(now.format(DateTimeFormatter.ofPattern("HH")), pillBg, primaryColor, fontFamily)
+                        FlipTile(
+                            tileBg = pillBg,
+                            textColor = primaryColor,
+                            fontStyle = config.fontStyle,
+                            format24 = "HH",
+                            format12 = "hh"
+                        )
                         Spacer(GlanceModifier.width(8.dp))
-                        FlipTile(now.format(DateTimeFormatter.ofPattern("mm")), pillBg, primaryColor, fontFamily)
+                        FlipTile(
+                            tileBg = pillBg,
+                            textColor = primaryColor,
+                            fontStyle = config.fontStyle,
+                            format24 = "mm",
+                            format12 = "mm"
+                        )
                     }
                     Spacer(GlanceModifier.height(6.dp))
                     Text(
@@ -742,24 +718,19 @@ fun LumaWidgetContent(
                 }
 
                 WidgetTemplateId.VERTICAL_TYPO_CLOCK -> {
-                    val now = LocalTime.now()
-                    Text(
-                        text = now.format(DateTimeFormatter.ofPattern("HH")),
-                        style = TextStyle(
-                            color = ColorProvider(primaryColor),
-                            fontSize = 32.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = fontFamily
-                        )
+                    LiveGlanceClock(
+                        color = primaryColor,
+                        fontSizeSp = 32f,
+                        fontStyle = config.fontStyle,
+                        format24 = "HH",
+                        format12 = "hh"
                     )
-                    Text(
-                        text = now.format(DateTimeFormatter.ofPattern("mm")),
-                        style = TextStyle(
-                            color = ColorProvider(accentColor),
-                            fontSize = 32.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = fontFamily
-                        )
+                    LiveGlanceClock(
+                        color = accentColor,
+                        fontSizeSp = 32f,
+                        fontStyle = config.fontStyle,
+                        format24 = "mm",
+                        format12 = "mm"
                     )
                 }
 
@@ -773,14 +744,10 @@ fun LumaWidgetContent(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = GlanceModifier.defaultWeight()) {
-                            Text(
-                                text = now.format(DateTimeFormatter.ofPattern("HH:mm")),
-                                style = TextStyle(
-                                    color = ColorProvider(primaryColor),
-                                    fontSize = 24.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = fontFamily
-                                )
+                            LiveGlanceClock(
+                                color = primaryColor,
+                                fontSizeSp = 24f,
+                                fontStyle = config.fontStyle
                             )
                             Text(
                                 text = "DAY PROGRESS • $pct%",
@@ -845,14 +812,10 @@ fun LumaWidgetContent(
                         )
                     }
                     Spacer(GlanceModifier.height(4.dp))
-                    Text(
-                        text = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm")),
-                        style = TextStyle(
-                            color = ColorProvider(secondaryColor),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = fontFamily
-                        )
+                    LiveGlanceClock(
+                        color = secondaryColor,
+                        fontSizeSp = 12f,
+                        fontStyle = config.fontStyle
                     )
                 }
 
@@ -1608,13 +1571,13 @@ fun LumaWidgetContent(
                         )
                     )
                     Spacer(GlanceModifier.height(8.dp))
-                    val labels = listOf("Phone", "Msgs", "Web", "Cam")
                     Row(
                         modifier = GlanceModifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.Horizontal.CenterHorizontally
                     ) {
-                        labels.forEachIndexed { idx, label ->
+                        for (idx in 0 until 4) {
                             val pkg = config.favoritePackages.getOrNull(idx)
+                            val label = DockAppPresets.shortLabelForPackage(pkg)
                             val launchIntent = pkg?.let { context.packageManager.getLaunchIntentForPackage(it) }
                             val modifier = GlanceModifier
                                 .background(pillBg)
@@ -1636,7 +1599,7 @@ fun LumaWidgetContent(
                                     )
                                 )
                             }
-                            if (idx < labels.lastIndex) {
+                            if (idx < 3) {
                                 Spacer(GlanceModifier.width(6.dp))
                             }
                         }
@@ -1648,11 +1611,39 @@ fun LumaWidgetContent(
 }
 
 @Composable
+private fun LiveGlanceClock(
+    color: Color,
+    fontSizeSp: Float,
+    fontStyle: FontStylePreset,
+    format24: String = "HH:mm",
+    format12: String = "hh:mm",
+    timeZone: String? = null
+) {
+    val ctx = LocalContext.current
+    val layoutRes = when (fontStyle) {
+        FontStylePreset.SERIF_EDITORIAL -> R.layout.glance_live_text_clock_serif
+        FontStylePreset.MONO_TECH -> R.layout.glance_live_text_clock_mono
+        else -> R.layout.glance_live_text_clock
+    }
+    val rv = RemoteViews(ctx.packageName, layoutRes).apply {
+        setTextColor(R.id.luma_live_clock, color.toArgb())
+        setTextViewTextSize(R.id.luma_live_clock, TypedValue.COMPLEX_UNIT_SP, fontSizeSp)
+        setCharSequence(R.id.luma_live_clock, "setFormat24Hour", format24)
+        setCharSequence(R.id.luma_live_clock, "setFormat12Hour", format12)
+        if (!timeZone.isNullOrBlank()) {
+            setString(R.id.luma_live_clock, "setTimeZone", timeZone)
+        }
+    }
+    AndroidRemoteViews(remoteViews = rv)
+}
+
+@Composable
 private fun FlipTile(
-    digits: String,
     tileBg: Color,
     textColor: Color,
-    fontFamily: FontFamily
+    fontStyle: FontStylePreset,
+    format24: String,
+    format12: String
 ) {
     Box(
         modifier = GlanceModifier
@@ -1661,14 +1652,12 @@ private fun FlipTile(
             .padding(horizontal = 14.dp, vertical = 10.dp),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = digits,
-            style = TextStyle(
-                color = ColorProvider(textColor),
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = fontFamily
-            )
+        LiveGlanceClock(
+            color = textColor,
+            fontSizeSp = 28f,
+            fontStyle = fontStyle,
+            format24 = format24,
+            format12 = format12
         )
     }
 }

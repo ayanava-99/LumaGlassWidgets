@@ -27,6 +27,8 @@ import androidx.compose.material.icons.rounded.PlayCircleOutline
 import androidx.compose.material.icons.rounded.PrivacyTip
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Restore
+import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.StarRate
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
@@ -48,6 +50,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -55,6 +58,7 @@ import com.lumaglass.widgets.BuildConfig
 import com.lumaglass.widgets.data.AppColorTheme
 import com.lumaglass.widgets.data.WidgetTemplateId
 import com.lumaglass.widgets.monetization.BillingManager
+import com.lumaglass.widgets.ui.components.ShareHelper
 import com.lumaglass.widgets.ui.theme.WallpaperBackdrop
 
 @Composable
@@ -75,6 +79,7 @@ fun ProSettingsScreen(
     onDismissBillingMessage: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     var showPrivacyDialog by remember { mutableStateOf(false) }
 
     val lockedWidgets = remember(isProUnlocked, rewardedUnlocked) {
@@ -342,6 +347,20 @@ fun ProSettingsScreen(
                     title = "Sync home screen widgets",
                     subtitle = "Force refresh all pinned LumaGlass widgets",
                     onClick = onRefreshAllWidgets
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                SettingsActionRow(
+                    icon = Icons.Rounded.Share,
+                    title = "Share LumaGlass with friends",
+                    subtitle = "Send your favorite Liquid Glass widget pack link",
+                    onClick = { ShareHelper.shareAppLink(context) }
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                SettingsActionRow(
+                    icon = Icons.Rounded.StarRate,
+                    title = "Rate 5★ on Google Play",
+                    subtitle = "Help other Android customizers discover LumaGlass",
+                    onClick = { ShareHelper.openPlayStoreListing(context) }
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 SettingsActionRow(
