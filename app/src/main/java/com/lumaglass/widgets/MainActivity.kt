@@ -332,15 +332,18 @@ private fun LumaGlassRootScreen(
     adFallbackTemplate?.let { template ->
         AlertDialog(
             onDismissRequest = { adFallbackTemplate = null },
-            title = { Text("Test Ad Unavailable Offline") },
+            title = {
+                Text(if (BuildConfig.DEBUG) "Test Ad Unavailable Offline" else "Ad Loading — Try Again Soon")
+            },
             text = {
                 Text(
-                    "Google Test Rewarded Ad couldn't load (device may be offline or ad is still caching). " +
-                        if (BuildConfig.DEBUG) {
+                    if (BuildConfig.DEBUG) {
+                        "Google Test Rewarded Ad couldn't load (device may be offline or ad is still caching). " +
                             "Since this is a local Debug build, you can simulate completing the ad to test unlocking ${template.title}."
-                        } else {
-                            "Please check your internet connection and try again in a moment."
-                        }
+                    } else {
+                        "The rewarded video is still loading (new ad units can also take 1–2 hours to start serving). " +
+                            "Please check your connection and try again shortly, or unlock Lifetime Pro (₹49)."
+                    }
                 )
             },
             confirmButton = {

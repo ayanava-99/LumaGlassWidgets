@@ -23,8 +23,14 @@ import kotlinx.coroutines.flow.asStateFlow
 class AdMobManager(private val context: Context) {
 
     companion object {
-        val TEST_REWARDED_AD_UNIT_ID: String = BuildConfig.ADMOB_REWARDED_ID
-        val TEST_INTERSTITIAL_AD_UNIT_ID: String = BuildConfig.ADMOB_INTERSTITIAL_ID
+        private const val GOOGLE_TEST_REWARDED_ID = "ca-app-pub-3940256099942544/5224354917"
+        private const val GOOGLE_TEST_INTERSTITIAL_ID = "ca-app-pub-3940256099942544/1033173712"
+
+        val ACTIVE_REWARDED_AD_UNIT_ID: String
+            get() = if (BuildConfig.DEBUG) GOOGLE_TEST_REWARDED_ID else BuildConfig.ADMOB_REWARDED_ID
+
+        val ACTIVE_INTERSTITIAL_AD_UNIT_ID: String
+            get() = if (BuildConfig.DEBUG) GOOGLE_TEST_INTERSTITIAL_ID else BuildConfig.ADMOB_INTERSTITIAL_ID
     }
 
     private var rewardedAd: RewardedAd? = null
@@ -50,7 +56,7 @@ class AdMobManager(private val context: Context) {
         val request = AdRequest.Builder().build()
         RewardedAd.load(
             context,
-            TEST_REWARDED_AD_UNIT_ID,
+            ACTIVE_REWARDED_AD_UNIT_ID,
             request,
             object : RewardedAdLoadCallback() {
                 override fun onAdLoaded(ad: RewardedAd) {
@@ -70,7 +76,7 @@ class AdMobManager(private val context: Context) {
         val request = AdRequest.Builder().build()
         InterstitialAd.load(
             context,
-            TEST_INTERSTITIAL_AD_UNIT_ID,
+            ACTIVE_INTERSTITIAL_AD_UNIT_ID,
             request,
             object : InterstitialAdLoadCallback() {
                 override fun onAdLoaded(ad: InterstitialAd) {
@@ -92,7 +98,7 @@ class AdMobManager(private val context: Context) {
         val ad = rewardedAd
         if (ad == null) {
             loadRewardedAd()
-            onUnavailable("Test rewarded ad is still loading or device is offline.")
+            onUnavailable("Rewarded ad is still loading or device is offline.")
             return
         }
 

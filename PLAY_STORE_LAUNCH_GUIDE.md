@@ -36,8 +36,8 @@
 
 ---
 
-## 3. Activating Live Monetization (Earn Money via AdMob + ₹49 Pro IAP)
-> **Important:** `gradle.properties` currently uses **Official Google Test AdMob IDs** so you can test safely without AdMob policy violations. **Swap to your real AdMob IDs before publishing to Production**, otherwise test ads earn ₹0.
+## 3. Live Monetization Status (AdMob + ₹49 Pro IAP)
+> **Live AdMob Configured:** `gradle.properties` now embeds your live AdMob App ID (`ca-app-pub-8897189774076292~9957208966`) and live Rewarded/Interstitial Unit IDs for Release builds, while Debug builds automatically use Google Test Ad IDs for safe local testing. `app-ads.txt` is also live at `https://ayanava-99.github.io/app-ads.txt`.
 
 ### Step A: Google AdMob (Rewarded + Interstitial Ads)
 1. Create a free account at [apps.admob.com](https://apps.admob.com), click **Apps → Add App** (Android → *"No, not listed on a store yet"*), and name it `LumaGlass Widgets`.
